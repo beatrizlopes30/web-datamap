@@ -12,7 +12,7 @@ import { PatientData, RegionData } from "../types";
 import { patientService } from "../services/patientService";
 import { regionService } from "../services/regionService";
 import { SYMPTOM_OPTIONS, DISEASE_OPTIONS, getSymptomColor } from "../lib/constants";
-import { computeAlerts } from "../lib/alerts";
+import { computeAlerts, HealthAlert } from "../lib/alerts";
 import Dropdown from "../components/Dropdown";
 import RegionModal from "../components/RegionModal";
 import ChipSelect from "../components/ChipSelect";
@@ -85,6 +85,7 @@ export default function Home() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [dismissedAlertKeys, setDismissedAlertKeys] = useState<string[]>([]);
+  const [simulatedAlerts, setSimulatedAlerts] = useState<HealthAlert[]>([]);
   const toastTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const seenAlertKeysRef = useRef<Set<string> | null>(null);
 
@@ -234,9 +235,33 @@ export default function Home() {
   // agrupamentos de doença/sintoma dignos de alerta.
   const alerts = useMemo(() => computeAlerts(patients, regions), [patients, regions]);
   const visibleAlerts = useMemo(
-    () => alerts.filter(a => !dismissedAlertKeys.includes(a.key)),
-    [alerts, dismissedAlertKeys]
+    () => [...simulatedAlerts, ...alerts].filter(a => !dismissedAlertKeys.includes(a.key)),
+    [alerts, simulatedAlerts, dismissedAlertKeys]
   );
+
+  // Gera um alerta de mentirinha (não mexe no banco) só pra mostrar como fica a notificação
+  // em toast — útil pra demonstrar o recurso sem precisar esperar um agrupamento real de casos.
+  const handleSimulateAlert = useCallback(() => {
+    const isDisease = Math.random() < 0.5;
+    const regionName = regions[Math.floor(Math.random() * regions.length)]?.name || 'Zona de Teste';
+    const options = isDisease ? DISEASE_OPTIONS : SYMPTOM_OPTIONS;
+    const label = options[Math.floor(Math.random() * options.length)];
+    const count = 2 + Math.floor(Math.random() * 4);
+    const message = isDisease
+      ? `${regionName}: ${count} casos de ${label}`
+      : `${regionName}: agrupamento de ${label} (${count} casos)`;
+    const fakeAlert: HealthAlert = {
+      key: `sim-${Date.now()}`,
+      type: isDisease ? 'disease' : 'symptom',
+      regionId: 'sim',
+      regionName,
+      label,
+      count,
+      message: `${message} (simulado)`,
+    };
+    setSimulatedAlerts(prev => [fakeAlert, ...prev]);
+    showToast(`⚠️ ${fakeAlert.message}`);
+  }, [regions, showToast]);
 
   // Notifica só quando um alerta é NOVO (não existia na última checagem) — na primeira
   // carga apenas registra o estado atual como base, sem disparar um toast pra cada um.
@@ -372,8 +397,17 @@ export default function Home() {
             <>
               <div className="fixed inset-0 z-[499]" onClick={() => setNotificationsOpen(false)} />
               <div className="absolute top-9 right-16 w-80 bg-white rounded shadow-xl border border-gray-200 z-[500] text-gray-700 max-h-96 flex flex-col">
-                <div className="px-3 py-2.5 text-[13px] font-semibold border-b border-gray-100 flex items-center gap-1.5">
-                  <AlertTriangle className="w-3.5 h-3.5 text-amber-500" /> Notificações
+                <div className="px-3 py-2.5 text-[13px] font-semibold border-b border-gray-100 flex items-center justify-between gap-1.5">
+                  <span className="flex items-center gap-1.5">
+                    <AlertTriangle className="w-3.5 h-3.5 text-amber-500" /> Notificações
+                  </span>
+                  <button
+                    onClick={handleSimulateAlert}
+                    className="text-[10px] font-medium text-blue-600 hover:underline"
+                    title="Disparar uma notificação de teste"
+                  >
+                    Simular
+                  </button>
                 </div>
                 <div className="overflow-y-auto">
                   {visibleAlerts.length === 0 ? (
