@@ -11,7 +11,7 @@ import {
 import { PatientData, RegionData } from "../types";
 import { patientService } from "../services/patientService";
 import { regionService } from "../services/regionService";
-import { SYMPTOM_OPTIONS, DISEASE_OPTIONS } from "../lib/constants";
+import { SYMPTOM_OPTIONS, DISEASE_OPTIONS, getSymptomColor } from "../lib/constants";
 import { computeAlerts } from "../lib/alerts";
 import Dropdown from "../components/Dropdown";
 import RegionModal from "../components/RegionModal";
@@ -735,7 +735,7 @@ export default function Home() {
                     <button onClick={() => setSelectedSymptomFilters([])} className="text-[10px] text-blue-600 hover:underline">Limpar</button>
                   )}
                 </div>
-                <ChipSelect options={SYMPTOM_OPTIONS} selected={selectedSymptomFilters} onToggle={toggleSymptomFilter} activeColor="#f59e0b" />
+                <ChipSelect options={SYMPTOM_OPTIONS} selected={selectedSymptomFilters} onToggle={toggleSymptomFilter} colorFor={getSymptomColor} />
               </div>
 
               <div className="pt-2 border-t border-gray-100 flex items-center justify-between">
@@ -887,7 +887,7 @@ export default function Home() {
                   <div key={s.name}>
                     <div className="flex justify-between text-[12px] font-semibold text-gray-700 mb-1">
                       <span className="flex items-center gap-1.5">
-                        <div className="w-2 h-2 rounded-full shrink-0 bg-[#f59e0b]" />
+                        <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: getSymptomColor(s.name) }} />
                         {s.name}
                       </span>
                       <span className="flex items-center gap-2">
@@ -896,7 +896,7 @@ export default function Home() {
                       </span>
                     </div>
                     <div className="h-1.5 bg-gray-100 overflow-hidden">
-                      <div className="h-full transition-all duration-300 bg-[#f59e0b]" style={{ width: `${s.percent}%` }}></div>
+                      <div className="h-full transition-all duration-300" style={{ width: `${s.percent}%`, backgroundColor: getSymptomColor(s.name) }}></div>
                     </div>
                   </div>
                 ))}
