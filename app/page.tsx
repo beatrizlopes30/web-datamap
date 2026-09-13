@@ -263,17 +263,23 @@ export default function Home() {
     showToast(`⚠️ ${fakeAlert.message}`);
   }, [regions, showToast]);
 
-  // Notifica só quando um alerta é NOVO (não existia na última checagem) — na primeira
-  // carga apenas registra o estado atual como base, sem disparar um toast pra cada um.
+  // Chama atenção pra qualquer alerta que ainda não foi mostrado nesta sessão — inclusive os
+  // que já existiam quando o painel abriu, e não só os que aparecem depois (agrupamento de
+  // sintoma tipo "Febre" numa região, ou concentração de diagnóstico). Um alerta por vez vira
+  // toast; se vários aparecerem juntos (ex: na primeira carga), resume num só pra não competir
+  // pelo mesmo espaço na tela.
   useEffect(() => {
     const currentKeys = new Set(alerts.map(a => a.key));
-    if (seenAlertKeysRef.current === null) {
-      seenAlertKeysRef.current = currentKeys;
-      return;
-    }
-    const newAlerts = alerts.filter(a => !seenAlertKeysRef.current!.has(a.key));
-    newAlerts.forEach(a => showToast(`⚠️ ${a.message}`));
+    const isFirstRun = seenAlertKeysRef.current === null;
+    const newAlerts = isFirstRun ? alerts : alerts.filter(a => !seenAlertKeysRef.current!.has(a.key));
     seenAlertKeysRef.current = currentKeys;
+
+    if (newAlerts.length === 0) return;
+    if (newAlerts.length === 1) {
+      showToast(`⚠️ ${newAlerts[0].message}`);
+    } else {
+      showToast(`⚠️ ${newAlerts.length} alertas ativos — veja no sino de notificações`);
+    }
   }, [alerts, showToast]);
 
   // Calculate widget data based on filtered patients
