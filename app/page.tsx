@@ -239,9 +239,7 @@ export default function Home() {
     [alerts, simulatedAlerts, dismissedAlertKeys]
   );
 
-  // Gera um alerta de mentirinha (não mexe no banco) só pra mostrar como fica a notificação
-  // em toast — útil pra demonstrar o recurso sem precisar esperar um agrupamento real de casos.
-  const handleSimulateAlert = useCallback(() => {
+  function buildFakeAlert(): HealthAlert {
     const isDisease = Math.random() < 0.5;
     const regionName = regions[Math.floor(Math.random() * regions.length)]?.name || 'Zona de Teste';
     const options = isDisease ? DISEASE_OPTIONS : SYMPTOM_OPTIONS;
@@ -250,8 +248,8 @@ export default function Home() {
     const message = isDisease
       ? `${regionName}: ${count} casos de ${label}`
       : `${regionName}: agrupamento de ${label} (${count} casos)`;
-    const fakeAlert: HealthAlert = {
-      key: `sim-${Date.now()}`,
+    return {
+      key: `sim-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
       type: isDisease ? 'disease' : 'symptom',
       regionId: 'sim',
       regionName,
@@ -259,8 +257,17 @@ export default function Home() {
       count,
       message: `${message} (simulado)`,
     };
-    setSimulatedAlerts(prev => [fakeAlert, ...prev]);
-    showToast(`⚠️ ${fakeAlert.message}`);
+  }
+
+  // Gera algumas notificações de mentirinha em sequência (não mexem no banco) só pra mostrar
+  // como fica o recurso de alerta em toast, sem precisar esperar um agrupamento real de casos
+  // cruzar o limite. Escalonadas no tempo pra cada toast ficar visível por si só.
+  const handleSimulateAlert = useCallback(() => {
+    const batch = Array.from({ length: 3 }, buildFakeAlert);
+    setSimulatedAlerts(prev => [...batch, ...prev]);
+    batch.forEach((alert, i) => {
+      setTimeout(() => showToast(`⚠️ ${alert.message}`), i * 1800);
+    });
   }, [regions, showToast]);
 
   // Chama atenção pra qualquer alerta que ainda não foi mostrado nesta sessão — inclusive os
@@ -407,13 +414,24 @@ export default function Home() {
                   <span className="flex items-center gap-1.5">
                     <AlertTriangle className="w-3.5 h-3.5 text-amber-500" /> Notificações
                   </span>
-                  <button
-                    onClick={handleSimulateAlert}
-                    className="text-[10px] font-medium text-blue-600 hover:underline"
-                    title="Disparar uma notificação de teste"
-                  >
-                    Simular
-                  </button>
+                  <span className="flex items-center gap-2">
+                    {simulatedAlerts.length > 0 && (
+                      <button
+                        onClick={() => setSimulatedAlerts([])}
+                        className="text-[10px] font-medium text-gray-400 hover:text-gray-600 hover:underline"
+                        title="Remover notificações simuladas"
+                      >
+                        Limpar simuladas
+                      </button>
+                    )}
+                    <button
+                      onClick={handleSimulateAlert}
+                      className="text-[10px] font-medium text-blue-600 hover:underline"
+                      title="Disparar notificações de teste"
+                    >
+                      Simular notificações
+                    </button>
+                  </span>
                 </div>
                 <div className="overflow-y-auto">
                   {visibleAlerts.length === 0 ? (
